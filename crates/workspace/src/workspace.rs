@@ -4390,7 +4390,7 @@ impl Workspace {
         None
     }
 
-    #[cfg(target_os = "windows")]
+    #[cfg(all(target_os = "linux", target_env = "musl"))]
     fn shared_screen_for_peer(
         &self,
         _peer_id: PeerId,
@@ -4401,7 +4401,7 @@ impl Workspace {
         None
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(not(all(target_os = "linux", target_env = "musl")))]
     fn shared_screen_for_peer(
         &self,
         peer_id: PeerId,
