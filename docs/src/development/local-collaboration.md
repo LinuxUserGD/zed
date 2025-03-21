@@ -6,7 +6,7 @@ First, make sure you've installed Zed's dependencies for your platform:
 - [Linux](./linux.md#backend-dependencies)
 - [Windows](./windows.md#backend-dependencies)
 
-Note that `collab` can be compiled only with MSVC toolchain on Windows
+Note that `collab` can be compiled only with GCC toolchain on Linux
 
 ## Backend Dependencies
 

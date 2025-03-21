@@ -4922,6 +4922,7 @@ impl Workspace {
         )
     }
 
+    #[cfg(all(target_os = "linux", target_env = "musl"))]
     fn active_item_for_peer(
         &self,
         peer_id: PeerId,
@@ -4963,6 +4964,7 @@ impl Workspace {
         item_to_activate
     }
 
+    #[cfg(not(all(target_os = "linux", target_env = "musl")))]
     fn shared_screen_for_peer(
         &self,
         peer_id: PeerId,

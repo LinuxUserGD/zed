@@ -109,6 +109,7 @@ However, we realize that many distros have other priorities. We want to work wit
 - We allow users to install extensions locally and from [zed-industries/extensions](https://github.com/zed-industries/extensions). These extensions may install further tooling as needed, such as language servers. In the long run, we would like to make this safer, [see here](https://github.com/zed-industries/zed/issues/12358).
 - Zed connects to several online services by default (AI, telemetry, collaboration). AI and our telemetry can be disabled by your users with their zed settings or by patching our [default settings file](https://github.com/zed-industries/zed/blob/main/assets/settings/default.json).
 - As a result of the above issues, zed currently does not play nice with sandboxes, [see here](https://github.com/zed-industries/zed/pull/12006#issuecomment-2130421220)
+- Note that `collab` is not supported for clang.
 
 ## Flatpak
 
