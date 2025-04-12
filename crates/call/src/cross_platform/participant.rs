@@ -1,4 +1,4 @@
-#![cfg_attr(all(target_os = "linux", target_env = "musl"), allow(unused))]
+#![cfg_attr(all(target_os = "windows", target_env = "gnu"), allow(unused))]
 
 use anyhow::{anyhow, Result};
 use client::{proto, ParticipantIndex, User};
@@ -8,7 +8,7 @@ use livekit_client::AudioStream;
 use project::Project;
 use std::sync::Arc;
 
-#[cfg(not(all(target_os = "linux", target_env = "musl")))]
+#[cfg(not(all(target_os = "windows", target_env = "gnu")))]
 pub use livekit_client::id::TrackSid;
 pub use livekit_client::track::{RemoteAudioTrack, RemoteVideoTrack};
 
@@ -61,17 +61,17 @@ pub struct RemoteParticipant {
     pub participant_index: ParticipantIndex,
     pub muted: bool,
     pub speaking: bool,
-    #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     pub video_tracks: HashMap<TrackSid, RemoteVideoTrack>,
-    #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     pub audio_tracks: HashMap<TrackSid, (RemoteAudioTrack, AudioStream)>,
 }
 
 impl RemoteParticipant {
     pub fn has_video_tracks(&self) -> bool {
-        #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+        #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
         return !self.video_tracks.is_empty();
-        #[cfg(all(target_os = "linux", target_env = "musl"))]
+        #[cfg(all(target_os = "windows", target_env = "gnu"))]
         return false;
     }
 

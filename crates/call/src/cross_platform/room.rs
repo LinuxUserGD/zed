@@ -1,4 +1,4 @@
-#![cfg_attr(all(target_os = "linux", target_env = "musl"), allow(unused))]
+#![cfg_attr(all(target_os = "windows", target_env = "gnu"), allow(unused))]
 
 use crate::{
     call_settings::CallSettings,
@@ -15,7 +15,7 @@ use fs::Fs;
 use futures::{FutureExt, StreamExt};
 use gpui::{App, AppContext as _, AsyncApp, Context, Entity, EventEmitter, Task, WeakEntity};
 use language::LanguageRegistry;
-#[cfg(not(all(target_os = "linux", target_env = "musl")))]
+#[cfg(not(all(target_os = "windows", target_env = "gnu")))]
 use livekit::{
     capture_local_audio_track, capture_local_video_track,
     id::ParticipantIdentity,
@@ -25,7 +25,7 @@ use livekit::{
     track::{TrackKind, TrackSource},
     RoomEvent, RoomOptions,
 };
-#[cfg(all(target_os = "linux", target_env = "musl"))]
+#[cfg(all(target_os = "windows", target_env = "gnu"))]
 use livekit::{publication::LocalTrackPublication, RoomEvent};
 use livekit_client as livekit;
 use postage::{sink::Sink, stream::Stream, watch};
@@ -106,7 +106,7 @@ impl Room {
 
     #[cfg(all(
         any(test, feature = "test-support"),
-        not(all(target_os = "linux", target_env = "musl"))
+        not(all(target_os = "windows", target_env = "gnu"))
     ))]
     pub fn is_connected(&self) -> bool {
         if let Some(live_kit) = self.live_kit.as_ref() {
@@ -687,12 +687,12 @@ impl Room {
         }
     }
 
-    #[cfg(all(target_os = "linux", target_env = "musl"))]
+    #[cfg(all(target_os = "windows", target_env = "gnu"))]
     fn start_room_connection(&self, mut room: proto::Room, cx: &mut Context<Self>) -> Task<()> {
         Task::ready(())
     }
 
-    #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn start_room_connection(&self, mut room: proto::Room, cx: &mut Context<Self>) -> Task<()> {
         // Filter ourselves out from the room's participants.
         let local_participant_ix = room
@@ -845,7 +845,7 @@ impl Room {
                                     muted: true,
                                     speaking: false,
                                     video_tracks: Default::default(),
-                                    #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+                                    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
                                     audio_tracks: Default::default(),
                                 },
                             );
@@ -948,7 +948,7 @@ impl Room {
         );
 
         match event {
-            #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+            #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
             RoomEvent::TrackSubscribed {
                 track,
                 participant,
@@ -983,7 +983,7 @@ impl Room {
                 }
             }
 
-            #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+            #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
             RoomEvent::TrackUnsubscribed {
                 track, participant, ..
             } => {
@@ -1011,7 +1011,7 @@ impl Room {
                 }
             }
 
-            #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+            #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
             RoomEvent::ActiveSpeakersChanged { speakers } => {
                 let mut speaker_ids = speakers
                     .into_iter()
@@ -1028,7 +1028,7 @@ impl Room {
                 }
             }
 
-            #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+            #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
             RoomEvent::TrackMuted {
                 participant,
                 publication,
@@ -1053,7 +1053,7 @@ impl Room {
                 }
             }
 
-            #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+            #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
             RoomEvent::LocalTrackUnpublished { publication, .. } => {
                 log::info!("unpublished track {}", publication.sid());
                 if let Some(room) = &mut self.live_kit {
@@ -1076,12 +1076,12 @@ impl Room {
                 }
             }
 
-            #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+            #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
             RoomEvent::LocalTrackPublished { publication, .. } => {
                 log::info!("published track {:?}", publication.sid());
             }
 
-            #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+            #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
             RoomEvent::Disconnected { reason } => {
                 log::info!("disconnected from room: {reason:?}");
                 self.leave(cx).detach_and_log_err(cx);
@@ -1311,7 +1311,7 @@ impl Room {
 
         #[cfg(not(any(test, feature = "test-support")))]
         {
-            if cfg!(all(target_os = "linux", target_env = "musl")) {
+            if cfg!(all(target_os = "windows", target_env = "gnu")) {
                 return false;
             }
         }
@@ -1330,12 +1330,12 @@ impl Room {
         }
     }
 
-    #[cfg(all(target_os = "linux", target_env = "musl"))]
+    #[cfg(all(target_os = "windows", target_env = "gnu"))]
     pub fn share_microphone(&mut self, cx: &mut Context<Self>) -> Task<Result<()>> {
         Task::ready(Err(anyhow!("MinGW is not supported yet")))
     }
 
-    #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     #[track_caller]
     pub fn share_microphone(&mut self, cx: &mut Context<Self>) -> Task<Result<()>> {
         if self.status.is_offline() {
@@ -1412,12 +1412,12 @@ impl Room {
         })
     }
 
-    #[cfg(all(target_os = "linux", target_env = "musl"))]
+    #[cfg(all(target_os = "windows", target_env = "gnu"))]
     pub fn share_screen(&mut self, cx: &mut Context<Self>) -> Task<Result<()>> {
         Task::ready(Err(anyhow!("MinGW is not supported yet")))
     }
 
-    #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     pub fn share_screen(&mut self, cx: &mut Context<Self>) -> Task<Result<()>> {
         if self.status.is_offline() {
             return Task::ready(Err(anyhow!("room is offline")));
@@ -1564,7 +1564,7 @@ impl Room {
             LocalTrack::Published {
                 track_publication, ..
             } => {
-                #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+                #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
                 {
                     let local_participant = live_kit.room.local_participant();
                     let sid = track_publication.sid();
@@ -1582,7 +1582,7 @@ impl Room {
     }
 
     fn set_deafened(&mut self, deafened: bool, cx: &mut Context<Self>) -> Option<()> {
-        #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+        #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
         {
             let live_kit = self.live_kit.as_mut()?;
             cx.notify();
@@ -1620,7 +1620,7 @@ impl Room {
             LocalTrack::Published {
                 track_publication, ..
             } => {
-                #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+                #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
                 {
                     if should_mute {
                         track_publication.mute()
@@ -1635,14 +1635,14 @@ impl Room {
     }
 }
 
-#[cfg(all(target_os = "linux", target_env = "musl"))]
+#[cfg(all(target_os = "windows", target_env = "gnu"))]
 fn spawn_room_connection(
     livekit_connection_info: Option<proto::LiveKitConnectionInfo>,
     cx: &mut Context<'_, Room>,
 ) {
 }
 
-#[cfg(not(all(target_os = "linux", target_env = "musl")))]
+#[cfg(not(all(target_os = "windows", target_env = "gnu")))]
 fn spawn_room_connection(
     livekit_connection_info: Option<proto::LiveKitConnectionInfo>,
     cx: &mut Context<'_, Room>,
@@ -1707,10 +1707,10 @@ struct LiveKitRoom {
 }
 
 impl LiveKitRoom {
-    #[cfg(all(target_os = "linux", target_env = "musl"))]
+    #[cfg(all(target_os = "windows", target_env = "gnu"))]
     fn stop_publishing(&mut self, _cx: &mut Context<Room>) {}
 
-    #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn stop_publishing(&mut self, cx: &mut Context<Room>) {
         let mut tracks_to_unpublish = Vec::new();
         if let LocalTrack::Published {
