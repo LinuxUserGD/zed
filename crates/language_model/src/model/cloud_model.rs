@@ -6,7 +6,6 @@ use client::Client;
 use gpui::{
     App, AppContext as _, AsyncApp, Context, Entity, EventEmitter, Global, ReadGlobal as _,
 };
-use icons::IconName;
 use proto::{Plan, TypedEnvelope};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -14,7 +13,7 @@ use smol::lock::{RwLock, RwLockUpgradableReadGuard, RwLockWriteGuard};
 use strum::EnumIter;
 use thiserror::Error;
 
-use crate::LanguageModelAvailability;
+use crate::{LanguageModelAvailability, LanguageModelToolSchemaFormat};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "provider", rename_all = "lowercase")]
@@ -50,13 +49,6 @@ impl CloudModel {
             Self::Anthropic(model) => model.display_name(),
             Self::OpenAi(model) => model.display_name(),
             Self::Google(model) => model.display_name(),
-        }
-    }
-
-    pub fn icon(&self) -> Option<IconName> {
-        match self {
-            Self::Anthropic(_) => Some(IconName::AiAnthropicHosted),
-            _ => None,
         }
     }
 
@@ -107,10 +99,18 @@ impl CloudModel {
                 | google_ai::Model::Gemini20FlashThinking
                 | google_ai::Model::Gemini20FlashLite
                 | google_ai::Model::Gemini25ProExp0325
+                | google_ai::Model::Gemini25ProPreview0325
                 | google_ai::Model::Custom { .. } => {
                     LanguageModelAvailability::RequiresPlan(Plan::ZedPro)
                 }
             },
+        }
+    }
+
+    pub fn tool_input_format(&self) -> LanguageModelToolSchemaFormat {
+        match self {
+            Self::Anthropic(_) | Self::OpenAi(_) => LanguageModelToolSchemaFormat::JsonSchema,
+            Self::Google(_) => LanguageModelToolSchemaFormat::JsonSchemaSubset,
         }
     }
 }

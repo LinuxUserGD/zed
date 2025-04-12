@@ -1,11 +1,11 @@
 use dap_types::StartDebuggingRequestArguments;
-use schemars::{gen::SchemaSettings, JsonSchema};
+use schemars::{JsonSchema, r#gen::SchemaSettings};
 use serde::{Deserialize, Serialize};
 use std::net::Ipv4Addr;
 use std::path::PathBuf;
 use util::ResultExt;
 
-use crate::{TaskTemplate, TaskTemplates, TaskType};
+use crate::{TaskTemplate, TaskTemplates, TaskType, task_template::DebugArgs};
 
 impl Default for DebugConnectionType {
     fn default() -> Self {
@@ -41,7 +41,6 @@ impl TCPHost {
 #[derive(Default, Deserialize, Serialize, PartialEq, Eq, JsonSchema, Clone, Debug)]
 pub struct AttachConfig {
     /// The processId to attach to, if left empty we will show a process picker
-    #[serde(default)]
     pub process_id: Option<u32>,
 }
 
@@ -52,6 +51,9 @@ pub struct LaunchConfig {
     pub program: String,
     /// The current working directory of your project
     pub cwd: Option<PathBuf>,
+    /// Arguments to pass to a debuggee
+    #[serde(default)]
+    pub args: Vec<String>,
 }
 
 /// Represents the type that will determine which request to call on the debug adapter
@@ -64,6 +66,17 @@ pub enum DebugRequestType {
     Attach(AttachConfig),
 }
 
+impl From<LaunchConfig> for DebugRequestType {
+    fn from(launch_config: LaunchConfig) -> Self {
+        DebugRequestType::Launch(launch_config)
+    }
+}
+
+impl From<AttachConfig> for DebugRequestType {
+    fn from(attach_config: AttachConfig) -> Self {
+        DebugRequestType::Attach(attach_config)
+    }
+}
 /// Represents a request for starting the debugger.
 /// Contrary to `DebugRequestType`, `DebugRequestDisposition` is not Serializable.
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -102,6 +115,10 @@ pub struct DebugAdapterConfig {
     /// spawning a new process. This is useful for connecting to a debug adapter
     /// that is already running or is started by another process.
     pub tcp_connection: Option<TCPHost>,
+    /// What Locator to use to configure the debug task
+    pub locator: Option<String>,
+    /// Whether to tell the debug adapter to stop on entry
+    pub stop_on_entry: Option<bool>,
 }
 
 impl From<DebugTaskDefinition> for DebugAdapterConfig {
@@ -112,6 +129,8 @@ impl From<DebugTaskDefinition> for DebugAdapterConfig {
             request: DebugRequestDisposition::UserConfigured(def.request),
             initialize_args: def.initialize_args,
             tcp_connection: def.tcp_connection,
+            locator: def.locator,
+            stop_on_entry: def.stop_on_entry,
         }
     }
 }
@@ -130,6 +149,39 @@ impl TryFrom<DebugAdapterConfig> for DebugTaskDefinition {
             request,
             initialize_args: def.initialize_args,
             tcp_connection: def.tcp_connection,
+            locator: def.locator,
+            stop_on_entry: def.stop_on_entry,
+        })
+    }
+}
+
+impl TryFrom<TaskTemplate> for DebugTaskDefinition {
+    type Error = ();
+
+    fn try_from(value: TaskTemplate) -> Result<Self, Self::Error> {
+        let TaskType::Debug(debug_args) = value.task_type else {
+            return Err(());
+        };
+
+        let request = match debug_args.request {
+            crate::DebugArgsRequest::Launch => DebugRequestType::Launch(LaunchConfig {
+                program: value.command,
+                cwd: value.cwd.map(PathBuf::from),
+                args: value.args,
+            }),
+            crate::DebugArgsRequest::Attach(attach_config) => {
+                DebugRequestType::Attach(attach_config)
+            }
+        };
+
+        Ok(DebugTaskDefinition {
+            adapter: debug_args.adapter,
+            request,
+            label: value.label,
+            initialize_args: debug_args.initialize_args,
+            tcp_connection: debug_args.tcp_connection,
+            locator: debug_args.locator,
+            stop_on_entry: debug_args.stop_on_entry,
         })
     }
 }
@@ -137,18 +189,31 @@ impl TryFrom<DebugAdapterConfig> for DebugTaskDefinition {
 impl DebugTaskDefinition {
     /// Translate from debug definition to a task template
     pub fn to_zed_format(self) -> anyhow::Result<TaskTemplate> {
-        let command = "".to_string();
-
-        let cwd = if let DebugRequestType::Launch(ref launch) = self.request {
-            launch
-                .cwd
-                .as_ref()
-                .map(|path| path.to_string_lossy().into_owned())
-        } else {
-            None
+        let (command, cwd, request) = match self.request {
+            DebugRequestType::Launch(launch_config) => (
+                launch_config.program,
+                launch_config
+                    .cwd
+                    .map(|cwd| cwd.to_string_lossy().to_string()),
+                crate::task_template::DebugArgsRequest::Launch,
+            ),
+            DebugRequestType::Attach(attach_config) => (
+                "".to_owned(),
+                None,
+                crate::task_template::DebugArgsRequest::Attach(attach_config),
+            ),
         };
+
+        let task_type = TaskType::Debug(DebugArgs {
+            adapter: self.adapter,
+            request,
+            initialize_args: self.initialize_args,
+            locator: self.locator,
+            tcp_connection: self.tcp_connection,
+            stop_on_entry: self.stop_on_entry,
+        });
+
         let label = self.label.clone();
-        let task_type = TaskType::Debug(self);
 
         Ok(TaskTemplate {
             label,
@@ -189,6 +254,11 @@ pub struct DebugTaskDefinition {
     /// spawning a new process. This is useful for connecting to a debug adapter
     /// that is already running or is started by another process.
     pub tcp_connection: Option<TCPHost>,
+    /// Locator to use
+    /// -- cargo
+    pub locator: Option<String>,
+    /// Whether to tell the debug adapter to stop on entry
+    pub stop_on_entry: Option<bool>,
 }
 
 /// A group of Debug Tasks defined in a JSON file.
@@ -219,5 +289,23 @@ impl TryFrom<DebugTaskFile> for TaskTemplates {
             .collect();
 
         Ok(Self(templates))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{DebugRequestType, LaunchConfig};
+
+    #[test]
+    fn test_can_deserialize_non_attach_task() {
+        let deserialized: DebugRequestType =
+            serde_json::from_str(r#"{"program": "cafebabe"}"#).unwrap();
+        assert_eq!(
+            deserialized,
+            DebugRequestType::Launch(LaunchConfig {
+                program: "cafebabe".to_owned(),
+                ..Default::default()
+            })
+        );
     }
 }
