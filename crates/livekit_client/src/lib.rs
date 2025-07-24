@@ -7,6 +7,7 @@ pub use remote_video_track_view::{RemoteVideoTrackView, RemoteVideoTrackViewEven
     test,
     feature = "test-support",
     all(target_os = "windows", target_env = "gnu"),
+    all(target_os = "linux", target_env = "musl"),
     target_os = "freebsd"
 )))]
 mod livekit_client;
@@ -14,6 +15,7 @@ mod livekit_client;
     test,
     feature = "test-support",
     all(target_os = "windows", target_env = "gnu"),
+    all(target_os = "linux", target_env = "musl"),
     target_os = "freebsd"
 )))]
 pub use livekit_client::*;
@@ -22,6 +24,7 @@ pub use livekit_client::*;
     test,
     feature = "test-support",
     all(target_os = "windows", target_env = "gnu"),
+    all(target_os = "linux", target_env = "musl"),
     target_os = "freebsd"
 ))]
 mod mock_client;
@@ -29,6 +32,7 @@ mod mock_client;
     test,
     feature = "test-support",
     all(target_os = "windows", target_env = "gnu"),
+    all(target_os = "linux", target_env = "musl"),
     target_os = "freebsd"
 ))]
 pub mod test;
@@ -36,6 +40,7 @@ pub mod test;
     test,
     feature = "test-support",
     all(target_os = "windows", target_env = "gnu"),
+    all(target_os = "linux", target_env = "musl"),
     target_os = "freebsd"
 ))]
 pub use mock_client::*;
